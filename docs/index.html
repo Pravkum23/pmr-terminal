@@ -29,7 +29,7 @@ main{padding:18px 22px;max-width:1500px;margin:0 auto}
 .pos{color:var(--green)} .neg{color:var(--red)} .amb{color:var(--amber)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{color:var(--dim);text-align:right;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);
-text-transform:uppercase;font-size:11px;letter-spacing:.5px;cursor:pointer}
+text-transform:uppercase;font-size:11px;letter-spacing:.5px}
 th:first-child,td:first-child{text-align:left}
 td{padding:6px 8px;text-align:right;border-bottom:1px solid #16203a;white-space:nowrap}
 tr:hover td{background:var(--panel2)}
@@ -50,18 +50,18 @@ select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);bo
 </head>
 <body>
 <header>
-  <div class="logo"><b>PMR</b> Terminal <span>· Praveen · Moulya · Risha</span></div>
+  <div class="logo"><b>PMR</b> Terminal <span>· by Praveen</span></div>
   <div class="sub" id="updated"></div>
-  <div class="sub" style="margin-left:auto">47 instruments · 10 asset classes · 07:00 SGT daily</div>
+  <div class="sub" style="margin-left:auto">Core 47 + India 750 (all caps) + S&P 500 · 07:00 SGT daily</div>
 </header>
 <nav id="tabs"></nav>
 <main id="view"></main>
-<footer>PMR Terminal — educational analytics, not investment advice. Data: Yahoo Finance (EOD). Built with Claude.</footer>
+<footer>PMR Terminal — educational analytics, not investment advice. Data: Yahoo Finance (EOD).</footer>
 
 <script src="data.js"></script>
 <script>
 const D = window.PMR;
-const TABS = ["Market Overview","AI Scanner","AI Signals","Portfolio P&L","Optimizer","Risk Monitor","Backtest"];
+const TABS = ["Market Overview","AI Scanner","AI Signals","Stock Finder","Portfolio P&L","Optimizer","Risk Monitor","Backtest","Learn"];
 const $ = s => document.querySelector(s);
 const fmt = (x,d=2) => (x==null||isNaN(x)) ? "–" : Number(x).toLocaleString("en-IN",{maximumFractionDigits:d,minimumFractionDigits:d});
 const pct = x => (x==null||isNaN(x)) ? "–" : `<span class="${x>=0?'pos':'neg'}">${x>=0?'+':''}${fmt(x)}%</span>`;
@@ -80,15 +80,13 @@ function spark(id, data, color){
     scales:{x:{display:false},y:{display:false}},animation:false}}));
 }
 function sparkCell(r){
-  const c = r.ret_1m>=0 ? "#22c55e" : "#ef4444";
-  return `<canvas class="spark" id="sp_${r.symbol.replace(/[^a-z0-9]/gi,'')}" width="110" height="28"></canvas>
-  <script2 data-d='${JSON.stringify(r.spark)}' data-c='${c}'></script2>`;
+  return `<canvas class="spark" id="sp_${r.symbol.replace(/[^a-z0-9]/gi,'')}" width="110" height="28"></canvas>`;
 }
 function drawSparks(rows){
   rows.forEach(r=>{ if(r.spark) spark("sp_"+r.symbol.replace(/[^a-z0-9]/gi,''), r.spark, r.ret_1m>=0?"#22c55e":"#ef4444"); });
 }
 function ragTag(r){ return `<span class="tag ${r}">${r}</span>`; }
-function sigCls(s){ return {"STRONG BUY":"SB","BUY":"B","HOLD":"H","SELL":"S","STRONG SELL":"SS"}[s]; }
+function sigCls(s){ return {"STRONG BUY":"SB","BUY":"B","HOLD":"H","SELL":"S","STRONG SELL":"SS"}[s]||"H"; }
 
 /* ---------- MARKET OVERVIEW ---------- */
 function overview(){
@@ -127,17 +125,33 @@ function overview(){
 }
 
 /* ---------- AI SCANNER ---------- */
+let scanRegion = "All markets", scanCap = "All caps";
+function setScanRegion(v){ scanRegion = v; render("AI Scanner"); }
+function setScanCap(v){ scanCap = v; render("AI Scanner"); }
 function scanner(){
-  let html = `<div class="panel"><h3>AI Stock Scanner — composite score (momentum 30 · trend 25 · risk-adj 20 · drawdown health 15 · mean-rev 10)</h3>
-  <table><tr><th>#</th><th>Instrument</th><th>Class</th><th>Score</th><th>Momentum</th><th>Trend</th><th>Risk-Adj</th><th>DD Health</th><th>Mean-Rev</th><th>RSI</th><th>RAG</th></tr>`;
-  D.scanner.forEach((r,i)=>{
+  const pool = [...D.scanner, ...(D.extended||[])].sort((a,b)=>(b.scan_score||0)-(a.scan_score||0));
+  const regions = ["All markets", ...new Set(pool.map(r=>r.region||"Global"))];
+  const capOrder = ["Large Cap","Mid Cap","Small Cap","Micro Cap"];
+  const caps = ["All caps", ...capOrder.filter(c=>pool.some(r=>r.cap===c))];
+  let all = scanRegion==="All markets" ? pool : pool.filter(r=>(r.region||"Global")===scanRegion);
+  if(scanCap!=="All caps") all = all.filter(r=>r.cap===scanCap);
+  const rows = all.slice(0,100);
+  let html = `<div class="panel"><h3 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  AI Stock Scanner — market by market
+  <select onchange="setScanRegion(this.value)">${regions.map(x=>
+    `<option ${x===scanRegion?'selected':''}>${x}</option>`).join("")}</select>
+  <select onchange="setScanCap(this.value)">${caps.map(x=>
+    `<option ${x===scanCap?'selected':''}>${x}</option>`).join("")}</select>
+  <span style="font-weight:400;text-transform:none;letter-spacing:0">momentum 30 · trend 25 · risk-adj 20 · drawdown health 15 · mean-rev 10</span></h3>
+  <table><tr><th>#</th><th>Instrument</th><th>Market</th><th>Cap</th><th>Score</th><th>Momentum</th><th>Trend</th><th>Risk-Adj</th><th>DD Health</th><th>Mean-Rev</th><th>RSI</th><th>RAG</th></tr>`;
+  rows.forEach((r,i)=>{
     const p = r.scan_pillars;
     const col = r.scan_score>=70?"pos":(r.scan_score>=45?"amb":"neg");
-    html += `<tr><td>${i+1}</td><td><b>${r.name}</b></td><td>${r.asset_class}</td>
+    html += `<tr><td>${i+1}</td><td><b>${r.name}</b></td><td>${r.region||"Global"}</td><td>${r.cap||r.asset_class}</td>
     <td><span class="big ${col}" style="font-size:16px">${r.scan_score}</span></td>
     <td>${p.momentum}</td><td>${p.trend}</td><td>${p.riskadj}</td><td>${p.ddhealth}</td><td>${p.meanrev}</td>
     <td>${fmt(r.rsi14,0)}</td><td>${ragTag(r.rag)}</td></tr>`;});
-  html += `</table><div class="note">Scores are cross-sectional percentiles across the 47-instrument universe, recomputed daily.</div></div>`;
+  html += `</table><div class="note">Showing top ${rows.length} of ${all.length} instruments (core 47 + India Large/Mid/Small/Micro Cap + S&P 500). Extended-tier scores are percentiles within each market-and-cap peer group — a small cap is ranked against small caps only. Treat extended signals as a screening shortlist, then apply the Learn tab's fundamental checks. Use the dropdown to filter by market; use Stock Finder to look up any specific name.</div></div>`;
   $("#view").innerHTML = html;
 }
 
@@ -151,6 +165,74 @@ function signals(){
     <td style="text-align:left;white-space:normal;color:var(--dim);font-size:12px">${r.signal_reasons.join(" · ")}</td></tr>`;});
   html += `</table><div class="note">⚠ Educational signals generated by rules, not investment advice. Always do your own research.</div></div>`;
   $("#view").innerHTML = html;
+}
+
+/* ---------- STOCK FINDER ---------- */
+let finderSym = null;
+function pickStock(sym){ finderSym = sym; render("Stock Finder"); }
+function finderSearch(q){
+  q = q.trim().toLowerCase();
+  const box = $("#fresults");
+  if(!q){ box.innerHTML=""; return; }
+  const hits = [...D.instruments, ...(D.extended||[])].filter(r =>
+    r.name.toLowerCase().includes(q) || r.symbol.toLowerCase().includes(q)).slice(0,10);
+  box.innerHTML = hits.length ? hits.map(r=>
+    `<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line)"
+    onclick="pickStock('${r.symbol}')"><b>${r.name}</b> <span class="sub">${r.symbol} · ${r.cap||r.asset_class} · ${r.region||"Global"}</span></div>`).join("")
+    : `<div style="padding:8px 12px;color:var(--dim)">No match across core universe, India large/mid/small/micro caps or S&P 500. Add it to config/universe.yaml to track it.</div>`;
+}
+function jsSummary(r){
+  const dir = (r.ret_1m||0)>=0 ? "up" : "down";
+  let s = `${r.name} is trading at ${fmt(r.price)}, ${dir} ${fmt(Math.abs(r.ret_1m||0),1)}% over the past month`;
+  if(r.mtd!=null) s += ` and ${r.mtd>=0?"up":"down"} ${fmt(Math.abs(r.mtd),1)}% month-to-date`;
+  s += `. It is ${fmt(Math.abs(r.dd_52w||0),1)}% below its 52-week high (${r.rag} signal)`;
+  if(r.above_200===true) s += `, above its 200-day average — long-term uptrend intact`;
+  else if(r.above_200===false) s += `, below its 200-day average — long-term trend weak`;
+  s += `. RSI is ${fmt(r.rsi14,0)}, 1-year return ${(r.ret_1y||0)>=0?"+":""}${fmt(r.ret_1y,1)}%.`;
+  if(r.sector) s = `[${r.sector}] ` + s;
+  return s;
+}
+function finder(){
+  let html = `<div class="panel"><h3>Stock Finder — search any tracked instrument</h3>
+  <input id="fsearch" placeholder="Type a name or symbol… e.g. Reliance, TCS, Nvidia, Gold, Bitcoin"
+    style="width:100%;padding:11px 14px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;color:var(--txt);font-size:15px" oninput="finderSearch(this.value)">
+  <div id="fresults"></div></div>`;
+  const r = D.instruments.find(x=>x.symbol===finderSym)
+        || (D.extended||[]).find(x=>x.symbol===finderSym);
+  if(r && r.ok){
+    const f = r.fundamentals||{};
+    const sig = r.signal ? r : (D.signals.find(x=>x.symbol===r.symbol)||{});
+    html += `<div class="grid cards" style="margin-top:14px">
+      <div class="panel"><h3>${r.name} (${r.symbol})</h3><div class="big">${fmt(r.price)}</div>
+        <div class="note">${r.asset_class} · ${r.region||"Global"}${r.cap?" · "+r.cap:""}</div></div>
+      <div class="panel"><h3>Today / MTD / 1Y</h3>
+        <div style="font-size:17px">${pct(r.ret_1d)} · ${pct(r.mtd)} · ${pct(r.ret_1y)}</div>
+        <div class="note">vs 52W high: ${pct(r.dd_52w)}</div></div>
+      <div class="panel"><h3>RAG / AI Signal</h3>
+        <div style="font-size:17px">${ragTag(r.rag)} &nbsp; <span class="sig ${sigCls(sig.signal||'HOLD')}">${sig.signal||'—'}</span></div>
+        <div class="note">scanner score ${r.scan_score??'–'} · confidence ${sig.confidence??'–'}%</div></div>
+      <div class="panel"><h3>3-Month Trend</h3><canvas id="fspark" width="220" height="56"></canvas></div>
+    </div>
+    <div class="panel" style="margin-top:14px"><h3>Performance Summary</h3>
+      <p style="line-height:1.7;font-size:14px">${r.summary||jsSummary(r)}</p></div>`;
+    const fr = Object.entries({
+      "Sector": f.sector, "Market cap": f.market_cap ? Number(f.market_cap).toLocaleString() : null,
+      "P/E (trailing)": f.pe_trailing, "P/E (forward)": f.pe_forward, "P/B": f.pb,
+      "Dividend yield %": f.dividend_yield_pct, "ROE %": f.roe_pct,
+      "Net margin %": f.profit_margin_pct, "Revenue growth %": f.revenue_growth_pct,
+      "Debt / Equity": f.debt_to_equity, "Analyst consensus": f.recommendation,
+      "Last quarter": f.q_date, "Quarter revenue": f.q_revenue ? Number(f.q_revenue).toLocaleString() : null,
+      "Revenue YoY %": f.q_revenue_yoy_pct, "Net profit YoY %": f.q_net_income_yoy_pct,
+    }).filter(([,v])=>v!=null);
+    if(fr.length){
+      html += `<div class="panel" style="margin-top:14px"><h3>Fundamentals (Yahoo Finance, public data)</h3><table>`
+        + fr.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join("") + `</table></div>`;
+    }
+  }
+  $("#view").innerHTML = html;
+  const inp = $("#fsearch"); if(inp) inp.focus();
+  if(r && r.ok && r.spark) spark("fspark", r.spark, (r.ret_1m||0)>=0?"#22c55e":"#ef4444");
 }
 
 /* ---------- PORTFOLIO P&L ---------- */
@@ -228,8 +310,29 @@ function backtest(){
   $("#view").innerHTML = html;
 }
 
+/* ---------- LEARN ---------- */
+function learn(){
+  const S = (t,b)=>`<div class="panel" style="margin-top:14px"><h3>${t}</h3><div style="line-height:1.75;font-size:14px">${b}</div></div>`;
+  $("#view").innerHTML = `
+  ${S("Fundamental Analysis — the 10-minute primer", `Fundamental analysis asks one question: <b>what is this business actually worth?</b> You study the company's financial statements, its industry, and its management — then compare that value to the market price. If the price is well below your estimate of value, it may be a buying opportunity; well above, it may be expensive. This differs from technical analysis (used in the other tabs), which studies price patterns rather than the business itself. The two are complementary: fundamentals tell you <i>what</i> to buy, technicals help with <i>when</i>.`)}
+  ${S("The three financial statements", `<b>Income statement</b> — revenue (sales) at the top, costs subtracted down to net profit at the bottom. Watch: is revenue growing year over year? Are margins stable? <b>Balance sheet</b> — what the company owns (assets) vs owes (liabilities); the difference is shareholder equity. Watch: how much debt vs equity? <b>Cash flow statement</b> — actual cash moving in and out. Profits can be massaged; cash is harder to fake. Watch: is operating cash flow consistently positive and close to reported profit?`)}
+  ${S("Key ratios and what they mean", `<b>P/E (price ÷ earnings per share)</b> — how many years of current profit you pay for the stock. Compare within the same industry, not across. <b>EPS growth</b> — profit per share rising over years is the single strongest driver of long-term returns. <b>ROE (return on equity)</b> — how efficiently the company turns shareholder money into profit; consistently above ~15% is good. <b>Debt-to-equity</b> — above 1 deserves scrutiny (banks are an exception, leverage is their business). <b>Net margin</b> — profit as % of sales; stable or rising margins signal pricing power. <b>Dividend yield</b> — cash returned to you yearly as % of price.`)}
+  ${S("How to read a quarterly result", `Compare against the <b>same quarter last year</b> (YoY), not the previous quarter — most businesses are seasonal. The three numbers that matter: revenue growth, net profit growth, and margin change. Then read management commentary for guidance about the coming year. One weak quarter is noise; two or three in a row is a trend. The Stock Finder tab in this terminal auto-summarizes the last reported quarter for every tracked stock.`)}
+  ${S("Red flags", `Debt rising faster than profits · promoter/insider share pledging (India) · frequent "one-time" exceptional losses · receivables growing faster than sales (booking revenue not yet collected) · auditor resignations or qualified opinions · profit growing while operating cash flow doesn't.`)}
+  ${S("Free public resources to go deeper", `
+  <b>India:</b> <a href="https://zerodha.com/varsity/" target="_blank">Zerodha Varsity</a> (the best free structured course, start with Modules 1–3) ·
+  <a href="https://www.screener.in" target="_blank">Screener.in</a> (free fundamentals for every Indian stock) ·
+  <a href="https://www.nseindia.com/learn" target="_blank">NSE Academy investor education</a> ·
+  <a href="https://www.sebi.gov.in/investor-education.html" target="_blank">SEBI investor education</a>.<br>
+  <b>Global:</b> <a href="https://www.investopedia.com/fundamental-analysis-4689757" target="_blank">Investopedia — Fundamental Analysis</a> ·
+  <a href="https://www.sec.gov/oiea/investor-alerts-and-bulletins" target="_blank">SEC investor bulletins</a> ·
+  <a href="https://www.berkshirehathaway.com/letters/letters.html" target="_blank">Warren Buffett's shareholder letters</a> (free, timeless).<br>
+  <span class="sub">All links are public, free sources. This page is education, not advice.</span>`)}`;
+}
+
 const RENDER = {"Market Overview":overview,"AI Scanner":scanner,"AI Signals":signals,
-"Portfolio P&L":portfolio,"Optimizer":optimizer,"Risk Monitor":risk,"Backtest":backtest};
+"Stock Finder":finder,"Portfolio P&L":portfolio,"Optimizer":optimizer,"Risk Monitor":risk,
+"Backtest":backtest,"Learn":learn};
 function render(tab){ destroy(); tabs(tab); RENDER[tab](); }
 $("#updated").textContent = "Last updated: " + D.generated_at;
 render("Market Overview");

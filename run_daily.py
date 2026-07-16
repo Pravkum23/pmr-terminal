@@ -1,4 +1,9 @@
-"""PMR Terminal - daily orchestrator. (v1.0)"""
+"""PMR Terminal - daily orchestrator. (v1.1)
+
+Fetch -> metrics/RAG -> scanner -> signals -> fundamentals -> risk ->
+optimizer -> backtest -> P&L -> docs/data.js -> PPT deck -> HTML email.
+Run: python run_daily.py [--no-email]
+"""
 from __future__ import annotations
 
 import json
@@ -18,6 +23,8 @@ from pmr.backtest import backtest_trend
 from pmr.pnl import compute_pnl, load_portfolio
 from pmr.report_email import build_email_html, send_email
 from pmr.report_pptx import build_deck
+from pmr.fundamentals import attach_summaries, fetch_fundamentals
+from pmr.extended import build_extended
 
 SITE_URL = os.environ.get("SITE_URL", "")
 
@@ -70,20 +77,32 @@ def main():
     n_ok = sum(r.get("ok", False) for r in rows)
     print(f"Metrics OK for {n_ok}/{len(rows)} instruments")
     if n_ok < len(rows) * 0.7:
-        sys.exit("Too many instruments failed — aborting to avoid publishing bad data.")
+        sys.exit("Too many instruments failed - aborting to avoid publishing bad data.")
 
     scanner_rows = scan(rows)
     signal_rows = generate_signals(rows)
+    print("Fetching fundamentals for equities...")
+    fundamentals = fetch_fundamentals(rows)
+    print(f"Fundamentals for {len(fundamentals)} stocks")
+    attach_summaries(rows, fundamentals)
     breadth = market_breadth(rows)
     movers = movers_mtd(rows)
     risk_rows = risk_table(close, rows)
     pnl = compute_pnl(close, port_cfg)
 
+    extended = []
+    if os.environ.get("PMR_EXTENDED", "1") == "1":
+        try:
+            extended = build_extended({i["symbol"] for i in universe})
+        except Exception as e:  # noqa: BLE001
+            print(f"Extended tier failed, continuing without it: {e}")
+
     top15 = [r["symbol"] for r in scanner_rows[:15]]
     opt = optimize(close, sorted(set(top15 + port_syms)))
     bt = backtest_trend(close, sorted(set(top15 + port_syms)))
 
-    slim = lambda r: {k: v for k, v in r.items() if k != "spark"}
+    slim = lambda r: {k: v for k, v in r.items()
+                      if k not in ("spark", "summary", "fundamentals")}
     data = _clean({
         "generated_at": f"{now:%A, %d %b %Y %H:%M} SGT",
         "site_url": SITE_URL,
@@ -96,6 +115,7 @@ def main():
         "optimizer": opt,
         "pnl": pnl,
         "backtest": bt,
+        "extended": extended,
     })
 
     os.makedirs("docs", exist_ok=True)
@@ -109,8 +129,8 @@ def main():
     with open("docs/email_preview.html", "w", encoding="utf-8") as f:
         f.write(html)
     if "--no-email" not in sys.argv:
-        send_email(html, f"PMR Terminal Daily Brief — {now:%d %b %Y} · "
-                         f"{breadth['tone']} · RAG {breadth['red']}R/{breadth['amber']}A/{breadth['green']}G")
+        send_email(html, f"PMR Terminal Daily Brief - {now:%d %b %Y} | "
+                         f"{breadth['tone']} | RAG {breadth['red']}R/{breadth['amber']}A/{breadth['green']}G")
 
     print("Done.")
 

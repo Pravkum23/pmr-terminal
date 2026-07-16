@@ -1,9 +1,11 @@
-# PMR Terminal — 47-instrument universe across 10 asset classes
+# PMR Terminal - 47-instrument universe across 10 asset classes
 # symbol: Yahoo Finance ticker | name: display name
+# region: market grouping used by the AI Scanner filter (class default, per-instrument override)
 # RAG thresholds = drawdown from 52-week high (%): green < g, amber < a, red >= a
 
 classes:
   India Indices:
+    region: India
     rag: {green: 5, amber: 12}
     instruments:
       - {symbol: "^NSEI",     name: "NIFTY 50"}
@@ -12,6 +14,7 @@ classes:
       - {symbol: "^CNXIT",    name: "NIFTY IT"}
 
   India Stocks:
+    region: India
     rag: {green: 8, amber: 18}
     instruments:
       - {symbol: "RELIANCE.NS",   name: "Reliance"}
@@ -24,6 +27,7 @@ classes:
       - {symbol: "ITC.NS",        name: "ITC"}
 
   US Indices:
+    region: US
     rag: {green: 5, amber: 12}
     instruments:
       - {symbol: "^GSPC", name: "S&P 500"}
@@ -32,6 +36,7 @@ classes:
       - {symbol: "^RUT",  name: "Russell 2000"}
 
   US Stocks:
+    region: US
     rag: {green: 8, amber: 18}
     instruments:
       - {symbol: "AAPL",  name: "Apple"}
@@ -42,15 +47,17 @@ classes:
       - {symbol: "TSLA",  name: "Tesla"}
 
   Global Indices:
+    region: Global
     rag: {green: 5, amber: 12}
     instruments:
-      - {symbol: "^N225",  name: "Nikkei 225"}
-      - {symbol: "^HSI",   name: "Hang Seng"}
-      - {symbol: "^FTSE",  name: "FTSE 100"}
-      - {symbol: "^GDAXI", name: "DAX"}
-      - {symbol: "^STI",   name: "Straits Times"}
+      - {symbol: "^N225",  name: "Nikkei 225",     region: Asia-Pacific}
+      - {symbol: "^HSI",   name: "Hang Seng",      region: Asia-Pacific}
+      - {symbol: "^FTSE",  name: "FTSE 100",       region: Europe}
+      - {symbol: "^GDAXI", name: "DAX",            region: Europe}
+      - {symbol: "^STI",   name: "Straits Times",  region: Singapore}
 
   Bonds:
+    region: US
     rag: {green: 3, amber: 8}
     instruments:
       - {symbol: "TLT", name: "US 20Y+ Treasury"}
@@ -59,6 +66,7 @@ classes:
       - {symbol: "LQD", name: "IG Corporate Bonds"}
 
   Commodities:
+    region: Global
     rag: {green: 6, amber: 15}
     instruments:
       - {symbol: "GC=F", name: "Gold"}
@@ -68,6 +76,7 @@ classes:
       - {symbol: "NG=F", name: "Natural Gas"}
 
   Currencies:
+    region: Global
     rag: {green: 2, amber: 5}
     instruments:
       - {symbol: "INR=X",     name: "USD/INR"}
@@ -76,6 +85,7 @@ classes:
       - {symbol: "DX-Y.NYB",  name: "Dollar Index"}
 
   Crypto:
+    region: Global
     rag: {green: 15, amber: 30}
     instruments:
       - {symbol: "BTC-USD", name: "Bitcoin"}
@@ -83,6 +93,7 @@ classes:
       - {symbol: "SOL-USD", name: "Solana"}
 
   Sector ETFs:
+    region: US
     rag: {green: 6, amber: 15}
     instruments:
       - {symbol: "XLK",  name: "US Technology"}

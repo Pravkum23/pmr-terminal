@@ -65,4 +65,4 @@ python run_daily.py --no-email
 - `pmr/data.py:nse_quote()` can cross-check Indian symbols directly against nseindia.com.
 
 ---
-*Educational analytics — not investment advice. Built with Claude.*
+*Educational analytics — not investment advice.*
