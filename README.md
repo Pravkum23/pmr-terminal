@@ -1,6 +1,6 @@
 # PMR Terminal
 
-**P**raveen · **M**oulya · **R**isha — a daily market intelligence terminal.
+By Praveen — a daily market intelligence terminal.
 
 47 instruments · 10 asset classes · auto-runs every weekday at **07:00 SGT / 04:30 IST** (before Indian and Asian markets open), publishes a **live public webpage**, sends an **HTML email brief**, and builds a **PowerPoint deck** — all free, no server.
 
