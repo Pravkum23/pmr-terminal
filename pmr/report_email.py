@@ -47,6 +47,9 @@ font-family:'Segoe UI',Arial,sans-serif;color:#d7e1f3">
 &nbsp;·&nbsp; Day {_pct(p['day_pct'])} ({cur}{p['day_pnl']:,.0f})
 &nbsp;·&nbsp; Total {_pct(p['total_pnl_pct'])}
 </div>
+{('<h3 style="color:#7c8db5;font-size:12px;letter-spacing:1px;margin:18px 0 6px">AI ANALYST BRIEF</h3>'
+  '<div style="background:#111827;border:1px solid #1f2a44;border-radius:10px;padding:14px 16px;'
+  'font-size:13px;line-height:1.7;white-space:pre-wrap">' + d.get("ai_brief","") + '</div>') if d.get("ai_brief") else ''}
 {table("TOP MTD GAINERS", gain)}
 {table("TOP MTD LOSERS", lose)}
 {table("AI SIGNALS (conviction desk)", sigs)}

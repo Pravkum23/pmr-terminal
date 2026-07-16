@@ -1,18 +1,12 @@
-"""PMR Terminal - AI buy/sell signal engine.
+"""PMR Terminal - AI buy/sell signal engine (v2).
 
-Rules-based ensemble: each check votes; net vote + scan score decide the
+Rules-based ensemble: seven checks vote; net vote + scanner score decide
 signal and confidence. Educational signals, not investment advice.
-
-  STRONG BUY  : score>=70, uptrend intact, not overbought
-  BUY         : score>=55 and above 200DMA
-  HOLD        : everything in between
-  SELL        : below 200DMA with negative momentum
-  STRONG SELL : downtrend + death cross + RED regime
 """
 from __future__ import annotations
 
 
-def _votes(r: dict) -> tuple[int, list[str]]:
+def _votes(r):
     v, why = 0, []
     if r.get("above_200"):
         v += 1; why.append("above 200DMA")
@@ -22,6 +16,16 @@ def _votes(r: dict) -> tuple[int, list[str]]:
         v += 1; why.append("golden cross (50>200)")
     elif r.get("golden_cross") is False:
         v -= 1; why.append("death cross (50<200)")
+    if r.get("macd_bull"):
+        v += 1; why.append("MACD bullish")
+    elif r.get("macd_bull") is False:
+        v -= 1; why.append("MACD bearish")
+    rs = r.get("rs_3m")
+    if rs is not None:
+        if rs > 0:
+            v += 1; why.append(f"outperforming market by {rs:.1f}% (3M)")
+        else:
+            v -= 1; why.append(f"lagging market by {abs(rs):.1f}% (3M)")
     if (r.get("ret_3m") or 0) > 0:
         v += 1; why.append(f"3M momentum +{r['ret_3m']:.1f}%")
     else:
@@ -38,7 +42,7 @@ def _votes(r: dict) -> tuple[int, list[str]]:
     return v, why
 
 
-def generate_signals(rows: list[dict]) -> list[dict]:
+def generate_signals(rows):
     out = []
     for r in rows:
         if not r.get("ok"):
@@ -46,17 +50,17 @@ def generate_signals(rows: list[dict]) -> list[dict]:
         v, why = _votes(r)
         score = r.get("scan_score", 50)
         rsi = r.get("rsi14") or 50
-        if v >= 3 and score >= 70 and rsi < 70:
+        if v >= 4 and score >= 70 and rsi < 70:
             sig = "STRONG BUY"
         elif v >= 2 and score >= 55:
             sig = "BUY"
-        elif v <= -3 and r["rag"] == "RED":
+        elif v <= -4 and r["rag"] == "RED":
             sig = "STRONG SELL"
         elif v <= -2:
             sig = "SELL"
         else:
             sig = "HOLD"
-        conf = min(95, 50 + abs(v) * 8 + (score - 50) * 0.3 * (1 if v >= 0 else -1))
+        conf = min(95, 50 + abs(v) * 6 + (score - 50) * 0.3 * (1 if v >= 0 else -1))
         r["signal"] = sig
         r["confidence"] = round(max(30, conf), 0)
         r["signal_reasons"] = why

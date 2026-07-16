@@ -52,7 +52,7 @@ select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);bo
 <header>
   <div class="logo"><b>PMR</b> Terminal <span>· by Praveen</span></div>
   <div class="sub" id="updated"></div>
-  <div class="sub" style="margin-left:auto">Core 47 + India 750 (all caps) + S&P 500 · 07:00 SGT daily</div>
+  <div class="sub" style="margin-left:auto">India-first · Core 47 + India 750 all caps · 07:00 SGT daily</div>
 </header>
 <nav id="tabs"></nav>
 <main id="view"></main>
@@ -92,7 +92,13 @@ function sigCls(s){ return {"STRONG BUY":"SB","BUY":"B","HOLD":"H","SELL":"S","S
 function overview(){
   const b = D.breadth, m = D.movers;
   const toneCls = b.tone==="RISK-ON"?"pos":(b.tone==="RISK-OFF"?"neg":"amb");
-  let html = `
+  let html = "";
+  if(D.ai_brief){
+    html += `<div class="panel" style="margin-bottom:14px;border-color:var(--cyan)">
+    <h3 style="color:var(--cyan)">🤖 AI Analyst Brief</h3>
+    <div style="line-height:1.75;font-size:14px;white-space:pre-wrap">${D.ai_brief}</div></div>`;
+  }
+  html += `
   <div class="grid cards">
     <div class="panel"><h3>Market Tone</h3><div class="big ${toneCls}">${b.tone}</div>
       <div class="note">${b.advancers}▲ / ${b.decliners}▼ on the day</div></div>
@@ -142,15 +148,15 @@ function scanner(){
     `<option ${x===scanRegion?'selected':''}>${x}</option>`).join("")}</select>
   <select onchange="setScanCap(this.value)">${caps.map(x=>
     `<option ${x===scanCap?'selected':''}>${x}</option>`).join("")}</select>
-  <span style="font-weight:400;text-transform:none;letter-spacing:0">momentum 30 · trend 25 · risk-adj 20 · drawdown health 15 · mean-rev 10</span></h3>
-  <table><tr><th>#</th><th>Instrument</th><th>Market</th><th>Cap</th><th>Score</th><th>Momentum</th><th>Trend</th><th>Risk-Adj</th><th>DD Health</th><th>Mean-Rev</th><th>RSI</th><th>RAG</th></tr>`;
+  <span style="font-weight:400;text-transform:none;letter-spacing:0">momentum 25 · trend 20 · relative strength 20 · risk-adj 15 · dd health 10 · breakout 10</span></h3>
+  <table><tr><th>#</th><th>Instrument</th><th>Market</th><th>Cap</th><th>Score</th><th>Momentum</th><th>Trend</th><th>Rel Str</th><th>Risk-Adj</th><th>DD Health</th><th>Breakout</th><th>RSI</th><th>Signal</th><th>RAG</th></tr>`;
   rows.forEach((r,i)=>{
     const p = r.scan_pillars;
     const col = r.scan_score>=70?"pos":(r.scan_score>=45?"amb":"neg");
     html += `<tr><td>${i+1}</td><td><b>${r.name}</b></td><td>${r.region||"Global"}</td><td>${r.cap||r.asset_class}</td>
     <td><span class="big ${col}" style="font-size:16px">${r.scan_score}</span></td>
-    <td>${p.momentum}</td><td>${p.trend}</td><td>${p.riskadj}</td><td>${p.ddhealth}</td><td>${p.meanrev}</td>
-    <td>${fmt(r.rsi14,0)}</td><td>${ragTag(r.rag)}</td></tr>`;});
+    <td>${p.momentum}</td><td>${p.trend}</td><td>${p.relstr??"–"}</td><td>${p.riskadj}</td><td>${p.ddhealth}</td><td>${p.breakout??p.meanrev??"–"}</td>
+    <td>${fmt(r.rsi14,0)}</td><td class="sig ${sigCls(r.signal||"HOLD")}">${r.signal||"–"}</td><td>${ragTag(r.rag)}</td></tr>`;});
   html += `</table><div class="note">Showing top ${rows.length} of ${all.length} instruments (core 47 + India Large/Mid/Small/Micro Cap + S&P 500). Extended-tier scores are percentiles within each market-and-cap peer group — a small cap is ranked against small caps only. Treat extended signals as a screening shortlist, then apply the Learn tab's fundamental checks. Use the dropdown to filter by market; use Stock Finder to look up any specific name.</div></div>`;
   $("#view").innerHTML = html;
 }
@@ -276,8 +282,32 @@ function optimizer(){
 }
 
 /* ---------- RISK MONITOR ---------- */
+let riskSym = null;
+function setRiskSym(v){ riskSym = v; render("Risk Monitor"); }
+function riskCard(){
+  const r = D.risk.find(x=>x.symbol===riskSym);
+  if(!r) return "";
+  const inst = D.instruments.find(x=>x.symbol===riskSym)||{};
+  return `<div class="grid cards" style="margin-bottom:14px">
+    <div class="panel"><h3>${r.name}</h3><div class="big">${fmt(inst.price)}</div>
+      <div class="note">${r.asset_class} · ${ragTag(r.rag)}</div></div>
+    <div class="panel"><h3>Volatility (ann.)</h3><div class="big">${fmt(r.vol_ann,1)}%</div>
+      <div class="note">daily swings, annualized</div></div>
+    <div class="panel"><h3>VaR / CVaR 95%</h3><div class="big neg">${fmt(r.var95)}%</div>
+      <div class="note">worst expected day (CVaR ${fmt(r.cvar95)}%)</div></div>
+    <div class="panel"><h3>Max Drawdown 1Y</h3><div class="big neg">${fmt(r.max_dd_1y,1)}%</div>
+      <div class="note">peak-to-trough</div></div>
+    <div class="panel"><h3>Correlation</h3><div class="big">${r.corr_nifty??'–'}</div>
+      <div class="note">vs NIFTY 50 (vs S&P: ${r.corr_spx??'–'})</div></div>
+  </div>`;
+}
 function risk(){
-  let html = `<div class="grid two"><div class="panel"><h3>Risk Map — 1Y return vs volatility (bubble = |max drawdown|)</h3>
+  let html = `<div class="panel" style="margin-bottom:14px"><h3 style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  Inspect any instrument
+  <select onchange="setRiskSym(this.value)"><option value="">— choose —</option>${D.risk.map(r=>
+    `<option value="${r.symbol}" ${r.symbol===riskSym?'selected':''}>${r.name}</option>`).join("")}</select></h3>
+  ${riskCard()}</div>`;
+  html += `<div class="grid two"><div class="panel"><h3>Risk Map — 1Y return vs volatility (bubble = |max drawdown|)</h3>
   <canvas id="rmap" height="320"></canvas></div>
   <div class="panel"><h3>Highest-Risk Instruments</h3><table>
   <tr><th>Instrument</th><th>Vol%</th><th>VaR95</th><th>CVaR95</th><th>MaxDD 1Y</th><th>ρ NIFTY</th><th>ρ SPX</th><th>RAG</th></tr>`;

@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  models: read
 
 jobs:
   build:
@@ -24,6 +25,7 @@ jobs:
 
       - name: Run PMR Terminal pipeline
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}

@@ -14,7 +14,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from pmr.data import fetch_history, load_universe
-from pmr.signals import instrument_metrics, market_breadth, movers_mtd
+from pmr.signals import (attach_relative_strength, instrument_metrics,
+                         market_breadth, movers_mtd)
 from pmr.scanner import scan
 from pmr.engine import generate_signals
 from pmr.risk import risk_table
@@ -25,6 +26,7 @@ from pmr.report_email import build_email_html, send_email
 from pmr.report_pptx import build_deck
 from pmr.fundamentals import attach_summaries, fetch_fundamentals
 from pmr.extended import build_extended
+from pmr.ai_analyst import write_brief
 
 SITE_URL = os.environ.get("SITE_URL", "")
 
@@ -79,6 +81,18 @@ def main():
     if n_ok < len(rows) * 0.7:
         sys.exit("Too many instruments failed - aborting to avoid publishing bad data.")
 
+    # relative strength benchmarks: NIFTY for India, S&P for US, SPX for global
+    def _b3m(sym):
+        if sym in close.columns:
+            s = close[sym].dropna()
+            if len(s) > 63:
+                return float((s.iloc[-1] / s.iloc[-64] - 1) * 100)
+        return 0.0
+    bench_3m = {"India": _b3m("^NSEI"), "US": _b3m("^GSPC"),
+                "Global": _b3m("^GSPC"), "Singapore": _b3m("^STI"),
+                "Asia-Pacific": _b3m("^N225"), "Europe": _b3m("^FTSE")}
+    attach_relative_strength(rows, bench_3m)
+
     scanner_rows = scan(rows)
     signal_rows = generate_signals(rows)
     print("Fetching fundamentals for equities...")
@@ -93,7 +107,7 @@ def main():
     extended = []
     if os.environ.get("PMR_EXTENDED", "1") == "1":
         try:
-            extended = build_extended({i["symbol"] for i in universe})
+            extended = build_extended({i["symbol"] for i in universe}, bench_3m)
         except Exception as e:  # noqa: BLE001
             print(f"Extended tier failed, continuing without it: {e}")
 
@@ -117,6 +131,8 @@ def main():
         "backtest": bt,
         "extended": extended,
     })
+
+    data["ai_brief"] = write_brief(data)
 
     os.makedirs("docs", exist_ok=True)
     with open("docs/data.js", "w", encoding="utf-8") as f:

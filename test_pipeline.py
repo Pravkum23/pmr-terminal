@@ -22,10 +22,10 @@ sys.modules["pmr.data"].fetch_history = fake_fetch
 import pmr.extended as ext
 def fake_lists(exclude):
     caps = ["Large Cap","Mid Cap","Small Cap","Micro Cap"]
-    return [{"symbol": f"FAKE{i}.NS" if i%2 else f"FAKE{i}", "name": f"Fake Co {i}",
-             "asset_class": "India "+caps[i%4] if i%2 else "S&P 500",
-             "region": "India" if i%2 else "US", "cap": caps[i%4] if i%2 else "Large Cap",
-             "sector": "Testing", "rag_green": 8, "rag_amber": 18} for i in range(120)]
+    return [{"symbol": f"FAKE{i}.NS", "name": f"Fake Co {i}",
+             "asset_class": "India "+caps[i%4], "region": "India",
+             "cap": caps[i%4], "sector": "Testing",
+             "rag_green": 8, "rag_amber": 18} for i in range(120)]
 ext.load_extended_lists = fake_lists
 ext.fetch_history_chunked = lambda syms, period="2y", chunk=200: fake_fetch(syms)
 
