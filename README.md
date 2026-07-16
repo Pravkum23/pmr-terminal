@@ -40,7 +40,7 @@ Your live site: `https://YOUR_USERNAME.github.io/pmr-terminal/` — shareable wi
 2. GitHub repo → **Settings → Secrets and variables → Actions** → add three secrets:
    - `GMAIL_USER` = your Gmail address
    - `GMAIL_APP_PASSWORD` = the 16-character app password
-   - `EMAIL_TO` = abhijitthedon@gmail.com (or any recipient)
+   - `EMAIL_TO` = kumprav001@gmail.com (or any recipient)
 
 ### 4. Test it
 Repo → **Actions** → *PMR Terminal Daily* → **Run workflow**. In ~3 minutes the site, deck and email update with live market data. After that it runs itself every weekday at 07:00 SGT.
