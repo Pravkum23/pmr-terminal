@@ -1,0 +1,91 @@
+# PMR Terminal — 47-instrument universe across 10 asset classes
+# symbol: Yahoo Finance ticker | name: display name
+# RAG thresholds = drawdown from 52-week high (%): green < g, amber < a, red >= a
+
+classes:
+  India Indices:
+    rag: {green: 5, amber: 12}
+    instruments:
+      - {symbol: "^NSEI",     name: "NIFTY 50"}
+      - {symbol: "^NSEBANK",  name: "NIFTY Bank"}
+      - {symbol: "^BSESN",    name: "SENSEX"}
+      - {symbol: "^CNXIT",    name: "NIFTY IT"}
+
+  India Stocks:
+    rag: {green: 8, amber: 18}
+    instruments:
+      - {symbol: "RELIANCE.NS",   name: "Reliance"}
+      - {symbol: "TCS.NS",        name: "TCS"}
+      - {symbol: "HDFCBANK.NS",   name: "HDFC Bank"}
+      - {symbol: "ICICIBANK.NS",  name: "ICICI Bank"}
+      - {symbol: "INFY.NS",       name: "Infosys"}
+      - {symbol: "BHARTIARTL.NS", name: "Bharti Airtel"}
+      - {symbol: "TATAMOTORS.NS", name: "Tata Motors"}
+      - {symbol: "ITC.NS",        name: "ITC"}
+
+  US Indices:
+    rag: {green: 5, amber: 12}
+    instruments:
+      - {symbol: "^GSPC", name: "S&P 500"}
+      - {symbol: "^NDX",  name: "Nasdaq 100"}
+      - {symbol: "^DJI",  name: "Dow Jones"}
+      - {symbol: "^RUT",  name: "Russell 2000"}
+
+  US Stocks:
+    rag: {green: 8, amber: 18}
+    instruments:
+      - {symbol: "AAPL",  name: "Apple"}
+      - {symbol: "MSFT",  name: "Microsoft"}
+      - {symbol: "NVDA",  name: "Nvidia"}
+      - {symbol: "GOOGL", name: "Alphabet"}
+      - {symbol: "AMZN",  name: "Amazon"}
+      - {symbol: "TSLA",  name: "Tesla"}
+
+  Global Indices:
+    rag: {green: 5, amber: 12}
+    instruments:
+      - {symbol: "^N225",  name: "Nikkei 225"}
+      - {symbol: "^HSI",   name: "Hang Seng"}
+      - {symbol: "^FTSE",  name: "FTSE 100"}
+      - {symbol: "^GDAXI", name: "DAX"}
+      - {symbol: "^STI",   name: "Straits Times"}
+
+  Bonds:
+    rag: {green: 3, amber: 8}
+    instruments:
+      - {symbol: "TLT", name: "US 20Y+ Treasury"}
+      - {symbol: "IEF", name: "US 7-10Y Treasury"}
+      - {symbol: "SHY", name: "US 1-3Y Treasury"}
+      - {symbol: "LQD", name: "IG Corporate Bonds"}
+
+  Commodities:
+    rag: {green: 6, amber: 15}
+    instruments:
+      - {symbol: "GC=F", name: "Gold"}
+      - {symbol: "SI=F", name: "Silver"}
+      - {symbol: "CL=F", name: "Crude Oil WTI"}
+      - {symbol: "HG=F", name: "Copper"}
+      - {symbol: "NG=F", name: "Natural Gas"}
+
+  Currencies:
+    rag: {green: 2, amber: 5}
+    instruments:
+      - {symbol: "INR=X",     name: "USD/INR"}
+      - {symbol: "EURUSD=X",  name: "EUR/USD"}
+      - {symbol: "JPY=X",     name: "USD/JPY"}
+      - {symbol: "DX-Y.NYB",  name: "Dollar Index"}
+
+  Crypto:
+    rag: {green: 15, amber: 30}
+    instruments:
+      - {symbol: "BTC-USD", name: "Bitcoin"}
+      - {symbol: "ETH-USD", name: "Ethereum"}
+      - {symbol: "SOL-USD", name: "Solana"}
+
+  Sector ETFs:
+    rag: {green: 6, amber: 15}
+    instruments:
+      - {symbol: "XLK",  name: "US Technology"}
+      - {symbol: "XLE",  name: "US Energy"}
+      - {symbol: "XLF",  name: "US Financials"}
+      - {symbol: "ICLN", name: "Clean Energy"}

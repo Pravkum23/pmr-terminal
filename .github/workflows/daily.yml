@@ -1,0 +1,39 @@
+name: PMR Terminal Daily
+
+on:
+  schedule:
+    # 23:00 UTC Sun-Thu = 07:00 SGT Mon-Fri (04:30 IST) — before both markets open
+    - cron: "0 23 * * 0-4"
+  workflow_dispatch: {}   # manual "Run workflow" button
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run PMR Terminal pipeline
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: python run_daily.py
+
+      - name: Commit updated dashboard
+        run: |
+          git config user.name "pmr-bot"
+          git config user.email "actions@github.com"
+          git add docs/
+          git diff --cached --quiet || git commit -m "Daily update $(date -u +%F)"
+          git push

@@ -1,0 +1,16 @@
+# PMR Terminal — your live portfolio (edit me!)
+# Each holding: Yahoo symbol, quantity, average buy price, currency.
+# P&L, risk and the live performance tab are computed from this file daily.
+# Replace the sample holdings below with your real ones.
+
+base_currency: INR   # INR or USD — totals converted using USD/INR daily
+
+holdings:
+  - {symbol: "RELIANCE.NS",  qty: 50,  avg_price: 2450.00, currency: INR}
+  - {symbol: "TCS.NS",       qty: 25,  avg_price: 3600.00, currency: INR}
+  - {symbol: "HDFCBANK.NS",  qty: 60,  avg_price: 1520.00, currency: INR}
+  - {symbol: "INFY.NS",      qty: 80,  avg_price: 1400.00, currency: INR}
+  - {symbol: "AAPL",         qty: 10,  avg_price: 185.00,  currency: USD}
+  - {symbol: "NVDA",         qty: 8,   avg_price: 450.00,  currency: USD}
+  - {symbol: "GC=F",         qty: 1,   avg_price: 2300.00, currency: USD}
+  - {symbol: "BTC-USD",      qty: 0.1, avg_price: 60000.0, currency: USD}

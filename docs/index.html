@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PMR Terminal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0a0e1a;--panel:#111827;--panel2:#0d1424;--line:#1f2a44;--txt:#d7e1f3;
+--dim:#7c8db5;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--cyan:#22d3ee}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:14px/1.45 'Segoe UI',system-ui,sans-serif}
+a{color:var(--cyan)}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:14px 22px;
+border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0e1526,#0a0e1a)}
+.logo{font-size:24px;font-weight:800;letter-spacing:1px}
+.logo b{color:var(--cyan)} .logo span{font-weight:300;color:var(--dim)}
+.sub{color:var(--dim);font-size:12px}
+nav{display:flex;flex-wrap:wrap;gap:4px;padding:8px 18px;border-bottom:1px solid var(--line)}
+nav button{background:none;border:1px solid transparent;color:var(--dim);padding:8px 16px;
+cursor:pointer;font:600 13px 'Segoe UI';border-radius:6px}
+nav button.on{color:#fff;background:var(--panel);border-color:var(--blue)}
+main{padding:18px 22px;max-width:1500px;margin:0 auto}
+.grid{display:grid;gap:14px}
+.cards{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.panel h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:10px}
+.big{font-size:26px;font-weight:700}
+.pos{color:var(--green)} .neg{color:var(--red)} .amb{color:var(--amber)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--dim);text-align:right;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);
+text-transform:uppercase;font-size:11px;letter-spacing:.5px;cursor:pointer}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px 8px;text-align:right;border-bottom:1px solid #16203a;white-space:nowrap}
+tr:hover td{background:var(--panel2)}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.tag.GREEN{background:#052e16;color:var(--green)} .tag.AMBER{background:#3b2604;color:var(--amber)}
+.tag.RED{background:#3f0d0d;color:var(--red)}
+.sig{font-weight:700}
+.sig.SB,.sig.B{color:var(--green)} .sig.H{color:var(--dim)} .sig.S,.sig.SS{color:var(--red)}
+canvas.spark{width:110px;height:28px}
+.two{grid-template-columns:1fr 1fr} .three{grid-template-columns:2fr 1fr}
+@media(max-width:900px){.two,.three{grid-template-columns:1fr}}
+.note{color:var(--dim);font-size:11px;margin-top:10px}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;display:flex}
+footer{color:var(--dim);font-size:11px;padding:20px;text-align:center}
+h2.sec{font-size:15px;margin:20px 0 10px;color:#fff}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><b>PMR</b> Terminal <span>· Praveen · Moulya · Risha</span></div>
+  <div class="sub" id="updated"></div>
+  <div class="sub" style="margin-left:auto">47 instruments · 10 asset classes · 07:00 SGT daily</div>
+</header>
+<nav id="tabs"></nav>
+<main id="view"></main>
+<footer>PMR Terminal — educational analytics, not investment advice. Data: Yahoo Finance (EOD). Built with Claude.</footer>
+
+<script src="data.js"></script>
+<script>
+const D = window.PMR;
+const TABS = ["Market Overview","AI Scanner","AI Signals","Portfolio P&L","Optimizer","Risk Monitor","Backtest"];
+const $ = s => document.querySelector(s);
+const fmt = (x,d=2) => (x==null||isNaN(x)) ? "–" : Number(x).toLocaleString("en-IN",{maximumFractionDigits:d,minimumFractionDigits:d});
+const pct = x => (x==null||isNaN(x)) ? "–" : `<span class="${x>=0?'pos':'neg'}">${x>=0?'+':''}${fmt(x)}%</span>`;
+const money = x => (x==null) ? "–" : (D.pnl.base_currency==="INR"?"₹":"$")+fmt(x,0);
+let charts = [];
+
+function tabs(active){
+  $("#tabs").innerHTML = TABS.map(t=>`<button class="${t===active?'on':''}" onclick="render('${t}')">${t}</button>`).join("");
+}
+function destroy(){ charts.forEach(c=>c.destroy()); charts=[]; }
+function spark(id, data, color){
+  const el = document.getElementById(id); if(!el) return;
+  charts.push(new Chart(el,{type:"line",data:{labels:data.map((_,i)=>i),
+    datasets:[{data,borderColor:color,borderWidth:1.4,pointRadius:0,fill:false,tension:.3}]},
+    options:{responsive:false,plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{display:false},y:{display:false}},animation:false}}));
+}
+function sparkCell(r){
+  const c = r.ret_1m>=0 ? "#22c55e" : "#ef4444";
+  return `<canvas class="spark" id="sp_${r.symbol.replace(/[^a-z0-9]/gi,'')}" width="110" height="28"></canvas>
+  <script2 data-d='${JSON.stringify(r.spark)}' data-c='${c}'></script2>`;
+}
+function drawSparks(rows){
+  rows.forEach(r=>{ if(r.spark) spark("sp_"+r.symbol.replace(/[^a-z0-9]/gi,''), r.spark, r.ret_1m>=0?"#22c55e":"#ef4444"); });
+}
+function ragTag(r){ return `<span class="tag ${r}">${r}</span>`; }
+function sigCls(s){ return {"STRONG BUY":"SB","BUY":"B","HOLD":"H","SELL":"S","STRONG SELL":"SS"}[s]; }
+
+/* ---------- MARKET OVERVIEW ---------- */
+function overview(){
+  const b = D.breadth, m = D.movers;
+  const toneCls = b.tone==="RISK-ON"?"pos":(b.tone==="RISK-OFF"?"neg":"amb");
+  let html = `
+  <div class="grid cards">
+    <div class="panel"><h3>Market Tone</h3><div class="big ${toneCls}">${b.tone}</div>
+      <div class="note">${b.advancers}▲ / ${b.decliners}▼ on the day</div></div>
+    <div class="panel"><h3>RAG Signals</h3>
+      <div class="big"><span class="neg">${b.red}</span> · <span class="amb">${b.amber}</span> · <span class="pos">${b.green}</span></div>
+      <div class="bar"><span style="flex:${b.red};background:var(--red)"></span><span style="flex:${b.amber};background:var(--amber)"></span><span style="flex:${b.green};background:var(--green)"></span></div>
+      <div class="note">R · A · G by 52-week drawdown</div></div>
+    <div class="panel"><h3>% Above 200DMA</h3><div class="big">${b.pct_above_200dma}%</div><div class="note">breadth across ${b.n} instruments</div></div>
+    <div class="panel"><h3>USD/INR</h3><div class="big">${fmt(D.pnl.usdinr)}</div><div class="note">daily conversion rate</div></div>
+  </div>
+  <div class="grid two" style="margin-top:14px">
+    <div class="panel"><h3>Top 5 MTD Gainers</h3><table>${m.gainers.map(r=>
+      `<tr><td>${r.name}</td><td>${ragTag(r.rag)}</td><td>${pct(r.mtd)}</td></tr>`).join("")}</table></div>
+    <div class="panel"><h3>Top 5 MTD Losers</h3><table>${m.losers.map(r=>
+      `<tr><td>${r.name}</td><td>${ragTag(r.rag)}</td><td>${pct(r.mtd)}</td></tr>`).join("")}</table></div>
+  </div>`;
+  const classes = [...new Set(D.instruments.map(r=>r.asset_class))];
+  classes.forEach(cls=>{
+    const rows = D.instruments.filter(r=>r.asset_class===cls && r.ok);
+    html += `<h2 class="sec">${cls}</h2><div class="panel"><table>
+    <tr><th>Instrument</th><th>Price</th><th>1D</th><th>1W</th><th>MTD</th><th>YTD</th><th>1Y</th><th>vs 52W High</th><th>RAG</th><th>3M Trend</th></tr>`;
+    rows.forEach(r=>{ html += `<tr><td><b>${r.name}</b> <span class="sub">${r.symbol}</span></td>
+      <td>${fmt(r.price)}</td><td>${pct(r.ret_1d)}</td><td>${pct(r.ret_1w)}</td><td>${pct(r.mtd)}</td>
+      <td>${pct(r.ytd)}</td><td>${pct(r.ret_1y)}</td><td>${pct(r.dd_52w)}</td>
+      <td>${ragTag(r.rag)}</td><td>${sparkCell(r)}</td></tr>`; });
+    html += `</table></div>`;
+  });
+  $("#view").innerHTML = html;
+  drawSparks(D.instruments);
+}
+
+/* ---------- AI SCANNER ---------- */
+function scanner(){
+  let html = `<div class="panel"><h3>AI Stock Scanner — composite score (momentum 30 · trend 25 · risk-adj 20 · drawdown health 15 · mean-rev 10)</h3>
+  <table><tr><th>#</th><th>Instrument</th><th>Class</th><th>Score</th><th>Momentum</th><th>Trend</th><th>Risk-Adj</th><th>DD Health</th><th>Mean-Rev</th><th>RSI</th><th>RAG</th></tr>`;
+  D.scanner.forEach((r,i)=>{
+    const p = r.scan_pillars;
+    const col = r.scan_score>=70?"pos":(r.scan_score>=45?"amb":"neg");
+    html += `<tr><td>${i+1}</td><td><b>${r.name}</b></td><td>${r.asset_class}</td>
+    <td><span class="big ${col}" style="font-size:16px">${r.scan_score}</span></td>
+    <td>${p.momentum}</td><td>${p.trend}</td><td>${p.riskadj}</td><td>${p.ddhealth}</td><td>${p.meanrev}</td>
+    <td>${fmt(r.rsi14,0)}</td><td>${ragTag(r.rag)}</td></tr>`;});
+  html += `</table><div class="note">Scores are cross-sectional percentiles across the 47-instrument universe, recomputed daily.</div></div>`;
+  $("#view").innerHTML = html;
+}
+
+/* ---------- AI SIGNALS ---------- */
+function signals(){
+  let html = `<div class="panel"><h3>AI Buy/Sell Engine — rules ensemble + scanner score</h3>
+  <table><tr><th>Instrument</th><th>Signal</th><th>Confidence</th><th>Score</th><th>Price</th><th>1M</th><th>Why</th></tr>`;
+  D.signals.forEach(r=>{ html += `<tr><td><b>${r.name}</b></td>
+    <td class="sig ${sigCls(r.signal)}">${r.signal}</td><td>${fmt(r.confidence,0)}%</td>
+    <td>${r.scan_score}</td><td>${fmt(r.price)}</td><td>${pct(r.ret_1m)}</td>
+    <td style="text-align:left;white-space:normal;color:var(--dim);font-size:12px">${r.signal_reasons.join(" · ")}</td></tr>`;});
+  html += `</table><div class="note">⚠ Educational signals generated by rules, not investment advice. Always do your own research.</div></div>`;
+  $("#view").innerHTML = html;
+}
+
+/* ---------- PORTFOLIO P&L ---------- */
+function portfolio(){
+  const p = D.pnl, r = p.risk||{};
+  let html = `<div class="grid cards">
+    <div class="panel"><h3>Portfolio Value</h3><div class="big">${money(p.total_value)}</div></div>
+    <div class="panel"><h3>Total P&L</h3><div class="big ${p.total_pnl>=0?'pos':'neg'}">${money(p.total_pnl)}</div><div class="note">${p.total_pnl_pct>=0?'+':''}${fmt(p.total_pnl_pct)}% on cost</div></div>
+    <div class="panel"><h3>Day P&L</h3><div class="big ${p.day_pnl>=0?'pos':'neg'}">${money(p.day_pnl)}</div><div class="note">${p.day_pct>=0?'+':''}${fmt(p.day_pct)}% today</div></div>
+    <div class="panel"><h3>Portfolio Sharpe (1Y)</h3><div class="big">${r.sharpe??'–'}</div><div class="note">vol ${r.vol_ann??'–'}% · maxDD ${r.max_dd_1y??'–'}%</div></div>
+  </div>
+  <div class="grid three" style="margin-top:14px">
+  <div class="panel"><h3>Positions</h3><table>
+  <tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Last</th><th>Value</th><th>P&L</th><th>P&L%</th><th>Day</th></tr>`;
+  p.positions.forEach(x=>{ html += `<tr><td><b>${x.symbol}</b></td><td>${x.qty}</td><td>${fmt(x.avg_price)}</td>
+    <td>${fmt(x.price)}</td><td>${money(x.value)}</td>
+    <td class="${x.pnl>=0?'pos':'neg'}">${money(x.pnl)}</td><td>${pct(x.pnl_pct)}</td><td>${pct(x.day_pct)}</td></tr>`;});
+  html += `</table><div class="note">Edit config/portfolio.yaml in the repo to update holdings.</div></div>
+  <div class="panel"><h3>Allocation</h3><canvas id="alloc" height="260"></canvas></div></div>`;
+  $("#view").innerHTML = html;
+  const w = p.weights||{};
+  charts.push(new Chart($("#alloc"),{type:"doughnut",
+    data:{labels:Object.keys(w),datasets:[{data:Object.values(w),
+    backgroundColor:["#3b82f6","#22c55e","#f59e0b","#ef4444","#22d3ee","#a78bfa","#f472b6","#84cc16","#fb923c","#64748b"]}]},
+    options:{plugins:{legend:{position:"right",labels:{color:"#d7e1f3",font:{size:11}}}}}}));
+}
+
+/* ---------- OPTIMIZER ---------- */
+function optimizer(){
+  let html = `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">`;
+  const names = {max_sharpe:"Max Sharpe",min_variance:"Min Variance",risk_parity:"Risk Parity"};
+  Object.entries(D.optimizer||{}).forEach(([k,o])=>{
+    html += `<div class="panel"><h3>${names[k]||k}</h3>
+    <div class="note" style="margin:0 0 8px">exp return <b class="pos">${o.exp_return}%</b> · vol <b>${o.exp_vol}%</b> · Sharpe <b>${o.sharpe}</b></div>
+    <table>`+Object.entries(o.weights).sort((a,b)=>b[1]-a[1]).map(([s,w])=>
+      `<tr><td>${s}</td><td>${(w*100).toFixed(1)}%</td>
+      <td style="width:45%"><div class="bar"><span style="flex:${w};background:var(--blue)"></span><span style="flex:${1-w}"></span></div></td></tr>`).join("")+`</table></div>`;
+  });
+  html += `</div><div class="note">Optimized over the top-15 scanner names + portfolio holdings, 2y daily returns, long-only, 30% per-asset cap. Annualized figures.</div>`;
+  $("#view").innerHTML = html;
+}
+
+/* ---------- RISK MONITOR ---------- */
+function risk(){
+  let html = `<div class="grid two"><div class="panel"><h3>Risk Map — 1Y return vs volatility (bubble = |max drawdown|)</h3>
+  <canvas id="rmap" height="320"></canvas></div>
+  <div class="panel"><h3>Highest-Risk Instruments</h3><table>
+  <tr><th>Instrument</th><th>Vol%</th><th>VaR95</th><th>CVaR95</th><th>MaxDD 1Y</th><th>ρ NIFTY</th><th>ρ SPX</th><th>RAG</th></tr>`;
+  D.risk.slice(0,15).forEach(r=>{ html += `<tr><td><b>${r.name}</b></td><td>${fmt(r.vol_ann,1)}</td>
+    <td class="neg">${fmt(r.var95)}</td><td class="neg">${fmt(r.cvar95)}</td><td class="neg">${fmt(r.max_dd_1y,1)}</td>
+    <td>${r.corr_nifty??'–'}</td><td>${r.corr_spx??'–'}</td><td>${ragTag(r.rag)}</td></tr>`;});
+  html += `</table></div></div>`;
+  $("#view").innerHTML = html;
+  const pts = D.risk.filter(r=>r.ret_1y!=null&&r.vol_ann!=null);
+  const col = {GREEN:"#22c55e",AMBER:"#f59e0b",RED:"#ef4444"};
+  charts.push(new Chart($("#rmap"),{type:"bubble",
+    data:{datasets:[{data:pts.map(r=>({x:r.vol_ann,y:r.ret_1y,r:Math.min(18,Math.abs(r.max_dd_1y)/2),n:r.name})),
+    backgroundColor:pts.map(r=>col[r.rag]+"99"),borderColor:pts.map(r=>col[r.rag])}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.n}: vol ${c.raw.x.toFixed(1)}%, 1Y ${c.raw.y.toFixed(1)}%`}}},
+    scales:{x:{title:{display:true,text:"Annualized Vol %",color:"#7c8db5"},ticks:{color:"#7c8db5"},grid:{color:"#1f2a44"}},
+            y:{title:{display:true,text:"1Y Return %",color:"#7c8db5"},ticks:{color:"#7c8db5"},grid:{color:"#1f2a44"}}}}}));
+}
+
+/* ---------- BACKTEST ---------- */
+function backtest(){
+  let html = `<div class="panel"><h3>Backtesting Engine — trend rule (long above 200DMA, flat below) vs Buy & Hold, 3y</h3>
+  <table><tr><th>Symbol</th><th>Strat CAGR</th><th>B&H CAGR</th><th>Edge</th><th>Strat Sharpe</th><th>B&H Sharpe</th><th>Strat MaxDD</th><th>B&H MaxDD</th><th>Trades</th><th>Win%</th></tr>`;
+  D.backtest.forEach(r=>{ html += `<tr><td><b>${r.symbol}</b></td>
+    <td>${pct(r.strategy.cagr)}</td><td>${pct(r.buyhold.cagr)}</td>
+    <td class="${r.edge_cagr>=0?'pos':'neg'}"><b>${r.edge_cagr>=0?'+':''}${fmt(r.edge_cagr)}%</b></td>
+    <td>${fmt(r.strategy.sharpe)}</td><td>${fmt(r.buyhold.sharpe)}</td>
+    <td class="neg">${fmt(r.strategy.max_dd,1)}%</td><td class="neg">${fmt(r.buyhold.max_dd,1)}%</td>
+    <td>${r.trades}</td><td>${fmt(r.win_rate,0)}%</td></tr>`;});
+  html += `</table><div class="note">The trend rule is the backbone of the buy/sell engine — this table shows where it historically added or cost CAGR vs simply holding. Past performance ≠ future results.</div></div>`;
+  $("#view").innerHTML = html;
+}
+
+const RENDER = {"Market Overview":overview,"AI Scanner":scanner,"AI Signals":signals,
+"Portfolio P&L":portfolio,"Optimizer":optimizer,"Risk Monitor":risk,"Backtest":backtest};
+function render(tab){ destroy(); tabs(tab); RENDER[tab](); }
+$("#updated").textContent = "Last updated: " + D.generated_at;
+render("Market Overview");
+</script>
+</body>
+</html>
