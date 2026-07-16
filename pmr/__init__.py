@@ -1,1 +1,1 @@
-"""PMR Terminal — Praveen · Moulya · Risha."""
+"""PMR Terminal."""
